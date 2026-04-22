@@ -1,7 +1,9 @@
 name: Continuous integration example
 
-on: 
+on:
   pull_request:
+  push:
+    branches: [ "main" ]
 
 jobs:
 
@@ -11,12 +13,43 @@ jobs:
       fail-fast: false
       matrix:
         os: [ macos-latest, windows-latest, ubuntu-latest ]
-        java: [ '11', '17', '21']
+        java: [ '11', '17', '21' ]
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version:  ${{ matrix.java }}
-      - run: mvn test
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - name: Run tests
+        run: mvn test
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Run tests again (Linux only)
+        run: mvn test
+
+      - name: Generate Docker image
+        run: mvn spring-boot:build-image -DskipTests \
+             -Dspring-boot.build-image.imageName=${{ secrets.DOCKERHUB_USERNAME }}/posts:v1
+
+      - name: Login to DockerHub
+        run: docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}"
+
+      - name: Push image to DockerHub
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/posts:v1
