@@ -29,7 +29,6 @@ jobs:
 
   publish:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4
@@ -40,7 +39,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Run tests again (Linux only)
+      - name: Run tests
         run: mvn test
 
       - name: Generate Docker image
